@@ -1,0 +1,30 @@
+{
+  "InvestmentTotal": "1000",
+  "Assets": [
+    {
+      "symbol": "BTC",
+      "numberOfTokens": "1",
+      "coinMarketCapURL": "https://coinmarketcap.com/currencies/bitcoin/"
+    },
+    {
+      "symbol": "ETH",
+      "numberOfTokens": "1",
+      "coinMarketCapURL": "https://coinmarketcap.com/currencies/ethereum/"
+    },
+    {
+      "symbol": "LTC",
+      "numberOfTokens": "1",
+      "coinMarketCapURL": "https://coinmarketcap.com/currencies/litecoin"
+    }
+  ],
+  "Prospects": [
+    {
+      "symbol": "ADA",
+      "coinMarketCapURL": "https://coinmarketcap.com/currencies/cardano/"
+    },
+    {
+      "symbol": "SOL",
+      "coinMarketCapURL": "https://coinmarketcap.com/currencies/solana/"
+    }
+  ]
+}

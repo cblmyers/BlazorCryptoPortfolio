@@ -1,0 +1,56 @@
+﻿@using BlazorCryptoPortfolio.Web.Models
+
+<MudTable Items="@TokenList" Dense="false" Hover="true" Bordered="false" Striped="true" Filter="new Func<Asset,bool>(FilterFunc)" @bind-SelectedItem="selectedItemAsset">
+    <ToolBarContent>
+        <MudSpacer />
+        <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Coin</MudTh>
+        <MudTh>Last Hour</MudTh>
+        <MudTh>Last 6 Hours</MudTh>
+        <MudTh>Last 12 Hours</MudTh>
+        <MudTh>Last 24 Hours</MudTh>
+        <MudTh>Last 7 Days</MudTh>
+        <MudTh>Last 30 Days</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Coin">
+            <MudLink Href="@context.URL" Target="_blank">@context.Symbol</MudLink>
+        </MudTd>
+        <MudTd DataLabel="Last Hour">@context.Trends.LastHour.Value.ToString("P")</MudTd>
+        <MudTd DataLabel="Last 6 Hours">@context.Trends.Last6Hours.Value.ToString("P")</MudTd>
+        <MudTd DataLabel="Last 12 Hours">@context.Trends.Last12Hours.Value.ToString("P")</MudTd>
+        <MudTd DataLabel="Last 24 Hours">@context.Trends.Last24Hours.Value.ToString("P")</MudTd>
+        <MudTd DataLabel="Last 7 Days">@context.Trends.Last7Days.Value.ToString("P")</MudTd>
+        <MudTd DataLabel="Last 30 Days">@context.Trends.Last30Days.Value.ToString("P")</MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private string searchString = "";
+    private Asset selectedItemAsset = null;
+    private HashSet<Asset> selectedItems = new HashSet<Asset>();
+
+    [Parameter]
+    public List<Asset> TokenList { get; set; }
+
+    protected override void OnInitialized()
+    {
+
+    }
+
+    private bool FilterFunc(Asset element) => FilterFunc(element, searchString);
+
+    private bool FilterFunc(Asset element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.Symbol.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+}

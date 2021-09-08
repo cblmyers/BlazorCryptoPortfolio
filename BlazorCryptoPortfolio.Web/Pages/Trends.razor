@@ -1,0 +1,195 @@
+﻿@page "/trends"
+@using System.Net.Http.Json
+@using BlazorCryptoPortfolio.Web.Models
+@inject HttpClient httpClient
+
+<h1>Trends</h1>
+
+<p>Check out the latest trends for your assets and prospects!</p>
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="Assets">
+        @if (Portfolio.Assets is null)
+        {
+            <div>Loading...</div>
+        }
+        else
+        {
+            @*<TrendsTable TokenList="@Portfolio.Assets.ToList()"></TrendsTable>*@
+            <MudTable Items="@Portfolio.Assets" Dense="false" Hover="true" Bordered="false" Striped="true" Filter="new Func<Asset, bool>(FilterFuncAsset)" @bind-SelectedItem="selectedItemAsset">
+                <ToolBarContent>
+                    <MudSpacer />
+                    <MudTextField @bind-Value="searchStringAsset" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                </ToolBarContent>
+                <HeaderContent>
+                    <MudTh>Coin</MudTh>
+                    <MudTh>Last Hour</MudTh>
+                    <MudTh>Last 6 Hours</MudTh>
+                    <MudTh>Last 12 Hours</MudTh>
+                    <MudTh>Last 24 Hours</MudTh>
+                    <MudTh>Last 7 Days</MudTh>
+                    <MudTh>Last 30 Days</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Coin">
+                        <MudLink Href="@context.URL" Target="_blank">@context.Symbol</MudLink>
+                    </MudTd>
+                    <MudTd DataLabel="Last Hour" Class="@context.Trends.LastHour.Css">@context.Trends.LastHour.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 6 Hours" Class="@context.Trends.Last6Hours.Css">@context.Trends.Last6Hours.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 12 Hours" Class="@context.Trends.Last12Hours.Css">@context.Trends.Last12Hours.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 24 Hours" Class="@context.Trends.Last24Hours.Css">@context.Trends.Last24Hours.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 7 Days" Class="@context.Trends.Last7Days.Css">@context.Trends.Last7Days.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 30 Days" Class="@context.Trends.Last30Days.Css">@context.Trends.Last30Days.Value.ToString("P")</MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        }
+    </MudTabPanel>
+    <MudTabPanel Text="Prospects">
+        @if (Portfolio.Prospects is null)
+        {
+            <div>Loading...</div>
+        }
+        else
+        {
+            @*<TrendsTable TokenList="@Portfolio.Prospects.ToList()"></TrendsTable>*@
+            <MudTable Items="@Portfolio.Prospects" Dense="false" Hover="true" Bordered="false" Striped="true" Filter="new Func<Asset, bool>(FilterFuncProspect)" @bind-SelectedItem="selectedItemProspect">
+                <ToolBarContent>
+                    <MudSpacer />
+                    <MudTextField @bind-Value="searchStringProspect" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                </ToolBarContent>
+                <HeaderContent>
+                    <MudTh>Coin</MudTh>
+                    <MudTh>Last Hour</MudTh>
+                    <MudTh>Last 6 Hours</MudTh>
+                    <MudTh>Last 12 Hours</MudTh>
+                    <MudTh>Last 24 Hours</MudTh>
+                    <MudTh>Last 7 Days</MudTh>
+                    <MudTh>Last 30 Days</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Coin">
+                        <MudLink Href="@context.URL" Target="_blank">@context.Symbol</MudLink>
+                    </MudTd>
+                    <MudTd DataLabel="Last Hour" Class="@context.Trends.LastHour.Css">@context.Trends.LastHour.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 6 Hours" Class="@context.Trends.Last6Hours.Css">@context.Trends.Last6Hours.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 12 Hours" Class="@context.Trends.Last12Hours.Css">@context.Trends.Last12Hours.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 24 Hours" Class="@context.Trends.Last24Hours.Css">@context.Trends.Last24Hours.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 7 Days" Class="@context.Trends.Last7Days.Css">@context.Trends.Last7Days.Value.ToString("P")</MudTd>
+                    <MudTd DataLabel="Last 30 Days" Class="@context.Trends.Last30Days.Css">@context.Trends.Last30Days.Value.ToString("P")</MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        }
+    </MudTabPanel>
+</MudTabs>
+
+
+@code {
+    private string searchStringAsset = "";
+    private string searchStringProspect = "";
+    private Asset selectedItemAsset = null;
+    private Asset selectedItemProspect = null;
+    private HashSet<Asset> selectedItems = new HashSet<Asset>();
+    private Portfolio Portfolio = new Portfolio();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Portfolio = await httpClient.GetFromJsonAsync<Portfolio>("portfolio.json");
+
+        // Call cyrptocompare API for the listed coins
+        var coinSymbols = Portfolio.Assets.Select(x => x.Symbol)
+            .Union(Portfolio.Prospects.Select(x => x.Symbol));
+
+        // Call CryptoCompare api to get hourly/daily price history
+        foreach (var symbol in coinSymbols)
+        {
+            HistoPrices.RootObject histoHourContent = null;
+            HistoPrices.RootObject histoMinuteContent = null;
+
+            // Daily price history
+            string apiURLHistoHour = $"https://min-api.cryptocompare.com/data/histohour?fsym={symbol}&tsym=USD&limit=720&aggregate=1";
+            HttpResponseMessage histoHourResponse = await httpClient.GetAsync(apiURLHistoHour);
+            if (histoHourResponse.IsSuccessStatusCode)
+            {
+                histoHourContent = await histoHourResponse.Content.ReadFromJsonAsync<HistoPrices.RootObject>();
+            }
+
+            // Hourly price history
+            string apiURLHistoMinute = $"https://min-api.cryptocompare.com/data/histominute?fsym={symbol}&tsym=USD&limit=1440&aggregate=1";
+            HttpResponseMessage histoMinuteResponse = await httpClient.GetAsync(apiURLHistoMinute);
+            if (histoMinuteResponse.IsSuccessStatusCode)
+            {
+                histoMinuteContent = await histoMinuteResponse.Content.ReadFromJsonAsync<HistoPrices.RootObject>();
+            }
+
+            if (histoHourContent != null && histoMinuteContent != null)
+                MapPriceHistoryToPortfolio(symbol, histoHourContent, histoMinuteContent);
+            else
+            {
+                Asset currentAsset = Portfolio.Assets.Where(x => x.Symbol == symbol).First();
+                currentAsset.Trends = new Models.Trends();
+            }
+        }
+    }
+
+    private bool FilterFuncAsset(Asset element) => FilterFunc(element, searchStringAsset);
+    private bool FilterFuncProspect(Asset element) => FilterFunc(element, searchStringProspect);
+
+    private bool FilterFunc(Asset element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.Symbol.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Add the trend data from cyrptocompare to the asset/prospect in the portfolio
+    /// </summary>
+    /// <param name="currentPrices">Raw api json</param>
+    private void MapPriceHistoryToPortfolio(string symbol, HistoPrices.RootObject histoHourPrices, HistoPrices.RootObject histoMinutePrices)
+    {
+        double currentPrice = histoMinutePrices.Data[1439].open;
+        if (Portfolio.Assets.Any(x => x.Symbol == symbol))
+        {
+            Asset currentAsset = Portfolio.Assets.Where(x => x.Symbol == symbol).First();
+            currentAsset.Trends = new Models.Trends
+            {
+                LastHour = CalculatePercentage(currentPrice, histoMinutePrices.Data[1379].open),
+                Last6Hours = CalculatePercentage(currentPrice, histoMinutePrices.Data[1079].open),
+                Last12Hours = CalculatePercentage(currentPrice, histoMinutePrices.Data[719].open),
+                Last24Hours = CalculatePercentage(currentPrice, histoMinutePrices.Data[0].open),
+                Last7Days = CalculatePercentage(currentPrice, histoHourPrices.Data[551].open),
+                Last30Days = CalculatePercentage(currentPrice, histoHourPrices.Data[0].open),
+            };
+        }
+
+        if (Portfolio.Prospects.Any(x => x.Symbol == symbol))
+        {
+            Asset currentAsset = Portfolio.Prospects.Where(x => x.Symbol == symbol).First();
+            currentAsset.Trends = new Models.Trends
+            {
+                LastHour = CalculatePercentage(currentPrice, histoMinutePrices.Data[1379].open),
+                Last6Hours = CalculatePercentage(currentPrice, histoMinutePrices.Data[1079].open),
+                Last12Hours = CalculatePercentage(currentPrice, histoMinutePrices.Data[719].open),
+                Last24Hours = CalculatePercentage(currentPrice, histoMinutePrices.Data[0].open),
+                Last7Days = CalculatePercentage(currentPrice, histoHourPrices.Data[551].open),
+                Last30Days = CalculatePercentage(currentPrice, histoHourPrices.Data[0].open),
+            };
+        }
+    }
+
+    private TrendData CalculatePercentage(double currentPrice, double previousPrice)
+    {
+        return new TrendData
+        {
+            Value = Math.Round(((currentPrice / previousPrice) - 1), 4)
+        };
+    }
+}

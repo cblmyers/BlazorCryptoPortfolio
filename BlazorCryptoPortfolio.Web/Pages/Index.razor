@@ -1,0 +1,113 @@
+﻿@page "/"
+@using System.IO;
+@using System.Net.Http.Json
+@using System.Text.Json
+@using BlazorCryptoPortfolio.Web.Models
+@inject HttpClient httpClient
+
+<h1>Portfolio</h1>
+
+<p>Welcome to your cryptocurrency portfolio!</p>
+
+<MudTable Items="@Portfolio.Assets" Hover="true" Striped="false" Loading="@loading" FixedHeader="true" FixedFooter="true" RowsPerPage="20" Filter="new Func<Asset,bool>(FilterFuncAsset)" @bind-SelectedItem="selectedItemAsset">
+    <ToolBarContent>
+        <MudSpacer />
+        <MudTextField @bind-Value="searchStringAsset" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Coin</MudTh>
+        <MudTh>Tokens Owned</MudTh>
+        <MudTh>BTC per Token</MudTh>
+        <MudTh>BTC Value</MudTh>
+        <MudTh>USD per Token</MudTh>
+        <MudTh>
+            <MudTableSortLabel InitialDirection="SortDirection.Descending" SortBy="new Func<Asset, object>(x=>x.USDTotal)">
+                USD Value
+            </MudTableSortLabel>
+        </MudTh>
+        <MudTh>Portfolio %</MudTh>
+        <MudTh>Market Cap</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Coin">
+            <MudLink Href="@context.URL" Target="_blank">@context.Symbol</MudLink>
+        </MudTd>
+        <MudTd DataLabel="Tokens Owned">@context.TokensOwned</MudTd>
+        <MudTd DataLabel="BTC per Token">@context.BTCPrice</MudTd>
+        <MudTd DataLabel="BTC Value">@context.BTCTotal</MudTd>
+        <MudTd DataLabel="USD per Token">@context.USDPrice.ToString("C")</MudTd>
+        <MudTd DataLabel="USD Value">@context.USDTotal.ToString("C")</MudTd>
+        <MudTd DataLabel="Portfolio %">@((context.USDTotal / Portfolio.USDTotal).ToString("P"))</MudTd>
+        <MudTd DataLabel="Market Cap">@context.MarketCap.ToString("C")</MudTd>
+    </RowTemplate>
+    <FooterContent>
+        <MudTd></MudTd>
+        <MudTd></MudTd>
+        <MudTd Class="footerText">Total Invested:</MudTd>
+        <MudTd>@Portfolio.InvestmentTotal.ToString("C")</MudTd>
+        <MudTd Class="footerText">Portfolio Total:</MudTd>
+        <MudTd>@Portfolio.USDTotal.ToString("C")</MudTd>
+        <MudTd Class="footerText">ROI:</MudTd>
+        <MudTd>@Portfolio.ROI.ToString("P")</MudTd>
+    </FooterContent>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool loading = true;
+    private string searchStringAsset = "";
+
+    private Asset selectedItemAsset = null;
+    private HashSet<Asset> selectedItemsAsset = new HashSet<Asset>();
+
+    private Portfolio Portfolio = new Portfolio();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load coins & investment data from local json file
+        Portfolio = await httpClient.GetFromJsonAsync<Portfolio>("portfolio.json");
+
+        // Call cyrptocompare API for the listed coins
+        var coinSymbols = string.Join(",", Portfolio.Assets.Select(x => x.Symbol));
+        string apiURL = $"https://min-api.cryptocompare.com/data/pricemultifull?fsyms={coinSymbols}&tsyms=BTC,USD&e=CCCAGG";
+        HttpResponseMessage response = await httpClient.GetAsync(apiURL);
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadFromJsonAsync<PriceMultiFull.RootObject>();
+            MapCoinDataToPortfolio(content);
+        }
+
+        loading = false;
+    }
+
+    private bool FilterFuncAsset(Asset element) => FilterFunc(element, searchStringAsset);
+
+    private bool FilterFunc(Asset element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.Symbol.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Add the price data from cyrptocompare to the asset in the portfolio
+    /// </summary>
+    /// <param name="currentPrices">Raw api json</param>
+    private void MapCoinDataToPortfolio(PriceMultiFull.RootObject currentPrices)
+    {
+        foreach (KeyValuePair<string, PriceMultiFull.Detail> currentCoinPrice in currentPrices.RAW)
+        {
+            var asset = Portfolio.Assets.First(a => string.Equals(a.Symbol, currentCoinPrice.Key, StringComparison.CurrentCultureIgnoreCase));
+            asset.BTCPrice = currentCoinPrice.Value.BTC.PRICE;
+            asset.USDPrice = currentCoinPrice.Value.USD.PRICE;
+            asset.MarketCap = currentCoinPrice.Value.USD.MKTCAP;
+
+            Portfolio.USDTotal += asset.USDTotal;
+            Portfolio.BTCTotal += asset.BTCTotal;
+        }
+    }
+}
